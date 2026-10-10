@@ -25,3 +25,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# CricBail Deployment Configuration and Bundles
+/scripts/deploy.env
+.deploy.env
+/storage/app/deployments/
+

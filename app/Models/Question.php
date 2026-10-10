@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+use Illuminate\Support\Str;
+
 class Question extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'quiz_id',
         'topic',
         'difficulty',
@@ -25,6 +28,15 @@ class Question extends Model
         'display_order',
         'is_active',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Question $question) {
+            if (empty($question->uuid)) {
+                $question->uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     protected function casts(): array
     {

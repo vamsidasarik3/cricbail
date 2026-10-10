@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+use Illuminate\Support\Str;
+
 class Quiz extends Model
 {
     use HasFactory;
@@ -16,12 +18,23 @@ class Quiz extends Model
     public const MAX_SCORE = 10;
 
     protected $fillable = [
+        'uuid',
         'title',
         'slug',
         'description',
         'status',
+        'quiz_type',
         'published_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Quiz $quiz) {
+            if (empty($quiz->uuid)) {
+                $quiz->uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     protected function casts(): array
     {

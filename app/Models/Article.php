@@ -8,11 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+use Illuminate\Support\Str;
+
 class Article extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'title',
         'slug',
         'excerpt',
@@ -27,6 +30,15 @@ class Article extends Model
         'source_name',
         'source_url',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Article $article) {
+            if (empty($article->uuid)) {
+                $article->uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     protected function casts(): array
     {

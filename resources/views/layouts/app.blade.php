@@ -213,18 +213,6 @@
                         <a class="nav-link {{ request()->is('category/international-cricket') ? 'active' : '' }}" href="{{ route('news.category', 'international-cricket') }}">International Cricket</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->is('category/domestic-cricket') ? 'active' : '' }}" href="{{ route('news.category', 'domestic-cricket') }}">Domestic Cricket</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->is('category/players') ? 'active' : '' }}" href="{{ route('news.category', 'players') }}">Players</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->is('category/analysis') ? 'active' : '' }}" href="{{ route('news.category', 'analysis') }}">Analysis</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('news.index') ? 'active' : '' }}" href="{{ route('news.index') }}">All News</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('quizzes.*') ? 'active' : '' }}" href="{{ route('quizzes.index') }}">Quizzes</a>
                     </li>
                 </ul>
