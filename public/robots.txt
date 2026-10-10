@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /quizzes/*/play
+Disallow: /quizzes/*/result/
+
+Sitemap: http://cricbail.vkrshna.in:8084/sitemap.xml

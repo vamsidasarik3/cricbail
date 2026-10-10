@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="iplGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a237e" />
+      <stop offset="50%" stop-color="#0d47a1" />
+      <stop offset="100%" stop-color="#f57f17" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#iplGrad)" />
+  <circle cx="400" cy="225" r="180" fill="#ffffff" fill-opacity="0.05" />
+
+  <!-- Trophy Silhouette -->
+  <path d="M360,140 L440,140 L430,230 Q400,270 370,230 Z" fill="#ffd700" stroke="#ffb300" stroke-width="4" />
+  <!-- Handles -->
+  <path d="M360,160 Q320,180 365,220" fill="none" stroke="#ffd700" stroke-width="6" />
+  <path d="M440,160 Q480,180 435,220" fill="none" stroke="#ffd700" stroke-width="6" />
+  <!-- Base -->
+  <rect x="375" y="260" width="50" height="40" fill="#37474f" rx="3" />
+  <rect x="350" y="300" width="100" height="25" fill="#263238" rx="4" />
+
+  <!-- Cricket Elements -->
+  <circle cx="250" cy="225" r="45" fill="#ffffff" fill-opacity="0.1" />
+  <text x="250" y="240" font-family="system-ui, sans-serif" font-size="40" text-anchor="middle">🏏</text>
+
+  <circle cx="550" cy="225" r="45" fill="#ffffff" fill-opacity="0.1" />
+  <text x="550" y="240" font-family="system-ui, sans-serif" font-size="40" text-anchor="middle">⚡</text>
+
+  <!-- Banner overlay -->
+  <rect x="220" y="370" width="360" height="45" rx="22" fill="#000000" fill-opacity="0.6" />
+  <text x="400" y="399" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#ffeb3b" text-anchor="middle" letter-spacing="3">IPL &bull; TOURNAMENT PULSE</text>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="domGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2c3e50" />
+      <stop offset="100%" stop-color="#1a252f" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#domGrad)" />
+
+  <!-- Shield Shape -->
+  <path d="M400,100 L490,140 L480,260 Q400,340 400,340 Q400,340 320,260 L310,140 Z" fill="#34495e" stroke="#f1c40f" stroke-width="5" />
+  <circle cx="400" cy="210" r="40" fill="#e74c3c" />
+  <path d="M370,210 L430,210 M400,180 L400,240" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+
+  <!-- Cricket Wickets & Grass -->
+  <path d="M150,380 L650,380" stroke="#27ae60" stroke-width="12" stroke-linecap="round" />
+
+  <!-- Banner overlay -->
+  <rect x="220" y="375" width="360" height="45" rx="22" fill="#000000" fill-opacity="0.6" />
+  <text x="400" y="404" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#f1c40f" text-anchor="middle" letter-spacing="3">DOMESTIC CRICKET ARENA</text>
+</svg>
