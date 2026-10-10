@@ -253,6 +253,14 @@ class ImportContentForDeploy extends Command
 
             // B. Resolve default author (User)
             $defaultAuthor = User::where('is_admin', true)->first() ?: User::first();
+            if (!$defaultAuthor && !$isDryRun) {
+                $defaultAuthor = User::create([
+                    'name' => 'CricBail Editorial Bureau',
+                    'email' => 'admin@cricbail.com',
+                    'password' => bcrypt(Str::random(32)),
+                    'is_admin' => true,
+                ]);
+            }
 
             // C. Articles
             foreach ($manifest['articles'] ?? [] as $artData) {
@@ -282,13 +290,25 @@ class ImportContentForDeploy extends Command
                         $catId = Category::first()?->id;
                     }
 
-                    // Resolve Author ID safely (without creating or altering passwords)
+                    // Resolve Author ID safely
                     $authorId = $defaultAuthor?->id;
                     if (!empty($artData['author_email'])) {
                         $matchedUser = User::where('email', $artData['author_email'])->first();
                         if ($matchedUser) {
                             $authorId = $matchedUser->id;
+                        } elseif (!$isDryRun) {
+                            $matchedUser = User::create([
+                                'name' => $artData['author_name'] ?? 'CricBail Editorial Bureau',
+                                'email' => $artData['author_email'],
+                                'password' => bcrypt(Str::random(32)),
+                                'is_admin' => true,
+                            ]);
+                            $authorId = $matchedUser->id;
                         }
+                    }
+
+                    if (!$authorId && $defaultAuthor) {
+                        $authorId = $defaultAuthor->id;
                     }
 
                     // Match existing article by uuid, slug, or source_url
