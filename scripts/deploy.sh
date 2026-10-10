@@ -132,6 +132,7 @@ fi
 # Configuration Defaults & Fallbacks
 DEPLOY_HOST="${DEPLOY_HOST:-}"
 DEPLOY_USER="${DEPLOY_USER:-}"
+DEPLOY_EXEC_USER="${DEPLOY_EXEC_USER:-}"
 DEPLOY_PORT="${DEPLOY_PORT:-22}"
 DEPLOY_SSH_KEY="${DEPLOY_SSH_KEY:-}"
 DEPLOY_REMOTE_PATH="${DEPLOY_REMOTE_PATH:-}"
@@ -302,7 +303,10 @@ fi
 
 SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
 
-log_info "Target Host: ${DEPLOY_HOST} (Port: ${DEPLOY_PORT}, User: ${DEPLOY_USER})"
+log_info "Target Host: ${DEPLOY_HOST} (Port: ${DEPLOY_PORT}, Connect User: ${DEPLOY_USER})"
+if [ -n "${DEPLOY_EXEC_USER}" ] && [ "${DEPLOY_EXEC_USER}" != "${DEPLOY_USER}" ]; then
+    log_info "Execution User: ${DEPLOY_EXEC_USER} (switching via: su - ${DEPLOY_EXEC_USER})"
+fi
 log_info "Remote Path: ${DEPLOY_REMOTE_PATH}"
 log_info "Target Branch: ${DEPLOY_BRANCH}"
 
@@ -316,7 +320,18 @@ if ! ssh "${SSH_OPTS[@]}" "${SSH_TARGET}" "echo 'SSH_OK'" >/dev/null 2>&1; then
     echo "  - The user '${DEPLOY_USER}' has login access on '${DEPLOY_HOST}'."
     exit 1
 fi
-log_success "SSH connection established successfully!"
+
+if [ -n "${DEPLOY_EXEC_USER}" ] && [ "${DEPLOY_EXEC_USER}" != "${DEPLOY_USER}" ]; then
+    log_info "Testing user switch: 'su - ${DEPLOY_EXEC_USER}'..."
+    if ! ssh "${SSH_OPTS[@]}" "${SSH_TARGET}" "su - ${DEPLOY_EXEC_USER} -c 'echo \"SU_OK\"'" >/dev/null 2>&1; then
+        log_error "Connected as '${DEPLOY_USER}' but failed to switch to '${DEPLOY_EXEC_USER}' via 'su - ${DEPLOY_EXEC_USER}'."
+        echo "Please verify that the user '${DEPLOY_EXEC_USER}' exists on '${DEPLOY_HOST}'."
+        exit 1
+    fi
+    log_success "SSH connected as '${DEPLOY_USER}' -> verified user switch to '${DEPLOY_EXEC_USER}'!"
+else
+    log_success "SSH connection established successfully!"
+fi
 
 if [ "$DRY_RUN" = true ]; then
     log_step "DRY-RUN: Simulating remote deployment plan"
@@ -351,6 +366,10 @@ if [ "$SKIP_CONTENT" = false ] && [ -n "${BUNDLE_FILE}" ]; then
 
     log_info "Uploading ${BUNDLE_BASENAME} via SCP..."
     scp "${SCP_OPTS[@]}" "${BUNDLE_FILE}" "${SSH_TARGET}:${REMOTE_BUNDLE_PATH}"
+
+    if [ -n "${DEPLOY_EXEC_USER}" ] && [ "${DEPLOY_EXEC_USER}" != "${DEPLOY_USER}" ]; then
+        ssh "${SSH_OPTS[@]}" "${SSH_TARGET}" "chown -R '${DEPLOY_EXEC_USER}:${DEPLOY_EXEC_USER}' '${REMOTE_INCOMING_DIR}'"
+    fi
     log_success "Bundle transferred successfully to ${REMOTE_BUNDLE_PATH}"
 fi
 
@@ -475,16 +494,32 @@ REMOTE_EOF
 )
 
 # Run remote script over SSH
-ssh "${SSH_OPTS[@]}" "${SSH_TARGET}" bash -s -- \
-    "${DEPLOY_REMOTE_PATH}" \
-    "${DEPLOY_BRANCH}" \
-    "${DEPLOY_REMOTE_PHP}" \
-    "${DEPLOY_REMOTE_COMPOSER}" \
-    "${DEPLOY_BACKUP_DB}" \
-    "${SKIP_CODE}" \
-    "${SKIP_CONTENT}" \
-    "${REMOTE_BUNDLE_PATH}" \
-    "${FORCE_IMPORT}"
+if [ -n "${DEPLOY_EXEC_USER}" ] && [ "${DEPLOY_EXEC_USER}" != "${DEPLOY_USER}" ]; then
+    log_info "Executing remote deployment as '${DEPLOY_EXEC_USER}' (via su - ${DEPLOY_EXEC_USER})..."
+    REMOTE_WRAPPER="/tmp/cricbail_deploy_$$.sh"
+
+    # Transfer script to /tmp as root, set executable, grant ownership to DEPLOY_EXEC_USER
+    ssh "${SSH_OPTS[@]}" "${SSH_TARGET}" "cat << 'EOF' > '${REMOTE_WRAPPER}'
+${REMOTE_SCRIPT}
+EOF
+chmod 755 '${REMOTE_WRAPPER}'
+chown ${DEPLOY_EXEC_USER}:${DEPLOY_EXEC_USER} '${REMOTE_WRAPPER}'
+"
+
+    # Execute under DEPLOY_EXEC_USER, capture exit status, and remove temp script
+    ssh "${SSH_OPTS[@]}" "${SSH_TARGET}" "su - ${DEPLOY_EXEC_USER} -c \"bash '${REMOTE_WRAPPER}' '${DEPLOY_REMOTE_PATH}' '${DEPLOY_BRANCH}' '${DEPLOY_REMOTE_PHP}' '${DEPLOY_REMOTE_COMPOSER}' '${DEPLOY_BACKUP_DB}' '${SKIP_CODE}' '${SKIP_CONTENT}' '${REMOTE_BUNDLE_PATH}' '${FORCE_IMPORT}'\"; STATUS=\$?; rm -f '${REMOTE_WRAPPER}'; exit \$STATUS"
+else
+    ssh "${SSH_OPTS[@]}" "${SSH_TARGET}" bash -s -- \
+        "${DEPLOY_REMOTE_PATH}" \
+        "${DEPLOY_BRANCH}" \
+        "${DEPLOY_REMOTE_PHP}" \
+        "${DEPLOY_REMOTE_COMPOSER}" \
+        "${DEPLOY_BACKUP_DB}" \
+        "${SKIP_CODE}" \
+        "${SKIP_CONTENT}" \
+        "${REMOTE_BUNDLE_PATH}" \
+        "${FORCE_IMPORT}"
+fi
 
 # ------------------------------------------------------------------------------
 # 7. VERIFICATION AND HEALTH CHECK
@@ -520,7 +555,7 @@ fi
 echo -e "\n${C_GREEN}${C_BOLD}========================================================================${C_RESET}"
 echo -e "${C_GREEN}${C_BOLD}                   DEPLOYMENT COMPLETED SUCCESSFULLY                    ${C_RESET}"
 echo -e "${C_GREEN}${C_BOLD}========================================================================${C_RESET}"
-echo -e "Target Server:       ${C_CYAN}${DEPLOY_HOST}${C_RESET} (${DEPLOY_USER})"
+echo -e "Target Server:       ${C_CYAN}${DEPLOY_HOST}${C_RESET} (${DEPLOY_USER}$([ -n "${DEPLOY_EXEC_USER}" ] && [ "${DEPLOY_EXEC_USER}" != "${DEPLOY_USER}" ] && echo " -> ${DEPLOY_EXEC_USER}"))"
 echo -e "Deployed Commit:     ${C_CYAN}${COMMIT_MESSAGE}${C_RESET}"
 echo -e "Branch:              ${C_CYAN}${DEPLOY_BRANCH}${C_RESET}"
 echo -e "Code Deployed:       ${C_GREEN}$([ "$SKIP_CODE" = false ] && echo "YES" || echo "SKIPPED")${C_RESET}"

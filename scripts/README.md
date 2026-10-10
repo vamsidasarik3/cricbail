@@ -38,8 +38,11 @@ The workflow allows you to push code changes to GitHub, create new articles, cat
    # Production Server Host (IP or domain)
    DEPLOY_HOST="cricbail.com"
 
-   # SSH Username on the server (e.g., forge, deploy, ubuntu, www-data)
-   DEPLOY_USER="forge"
+   # SSH Username to connect with (e.g., root, ubuntu, forge)
+   DEPLOY_USER="root"
+
+   # Switch to this application user on the server (via su - vamsidasarik)
+   DEPLOY_EXEC_USER="vamsidasarik"
 
    # SSH Port (default: 22)
    DEPLOY_PORT="22"
