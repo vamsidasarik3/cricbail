@@ -226,6 +226,92 @@ $articleModel = new Article();
 assertCheck(in_array('source_name', $articleModel->getFillable()) && in_array('source_url', $articleModel->getFillable()), "Article model has 'source_name' and 'source_url' in fillable attributes");
 
 // ---------------------------------------------------------------------
+// TEST 12: SERVER-SIDE HTML RENDERING OF ARTICLE BODY
+// ---------------------------------------------------------------------
+echo PHP_EOL . "--- 12. Testing Server-Side HTML Content Rendering ---" . PHP_EOL;
+$sampleArt = Article::published()->first();
+if ($sampleArt) {
+    $artReq = Request::create('/news/' . $sampleArt->slug, 'GET');
+    $artRes = $httpKernel->handle($artReq);
+    $artHtml = $artRes->getContent();
+
+    // Verify main article content is present in raw server response
+    $rawWords = array_values(array_filter(preg_split('/\s+/', strip_tags($sampleArt->content))));
+    $firstWords = implode(' ', array_slice($rawWords, 0, 6));
+    assertCheck(str_contains($artHtml, '<article') && str_contains($artHtml, 'article-content'), "Article HTML contains semantic <article> container and article-content element");
+    assertCheck(str_contains($artHtml, $firstWords), "Article body is rendered directly in server-side HTML without client JS dependency");
+}
+
+// ---------------------------------------------------------------------
+// TEST 13: SITEMAP DYNAMIC UPDATE ON NEW CONTENT PUBLICATION
+// ---------------------------------------------------------------------
+echo PHP_EOL . "--- 13. Testing Dynamic Sitemap Updates on Publication ---" . PHP_EOL;
+$catForTest = Category::first();
+$userForTest = User::first();
+$testSlug = 'dynamic-sitemap-verification-' . uniqid();
+
+// Create isolated test article
+$dynamicTestArticle = Article::create([
+    'title' => 'Dynamic Sitemap Test Publication',
+    'slug' => $testSlug,
+    'category_id' => $catForTest ? $catForTest->id : 1,
+    'author_id' => $userForTest ? $userForTest->id : 1,
+    'excerpt' => 'Temporary article created solely to test dynamic XML sitemap update reactivity.',
+    'content' => '<p>This is a temporary test article to ensure sitemap immediately reflects newly published content.</p>',
+    'status' => 'published',
+    'published_at' => now(),
+]);
+
+try {
+    $sitemapFreshReq = Request::create('/sitemap.xml', 'GET');
+    $sitemapFreshRes = $httpKernel->handle($sitemapFreshReq);
+    assertCheck(str_contains($sitemapFreshRes->getContent(), "/news/{$testSlug}"), "Newly published article immediately appears in dynamic /sitemap.xml");
+} finally {
+    // Strictly isolate and cleanup test article
+    $dynamicTestArticle->delete();
+}
+
+$sitemapPostDeleteReq = Request::create('/sitemap.xml', 'GET');
+$sitemapPostDeleteRes = $httpKernel->handle($sitemapPostDeleteReq);
+assertCheck(!str_contains($sitemapPostDeleteRes->getContent(), "/news/{$testSlug}"), "Deleted/unpublished article is immediately excluded from /sitemap.xml");
+
+// ---------------------------------------------------------------------
+// TEST 14: PAGINATION CANONICAL BEHAVIOR
+// ---------------------------------------------------------------------
+echo PHP_EOL . "--- 14. Testing Pagination Canonical URL Handling ---" . PHP_EOL;
+$page2Req = Request::create('/news?page=2', 'GET');
+$page2Res = $httpKernel->handle($page2Req);
+$page2Html = $page2Res->getContent();
+
+assertCheck($page2Res->getStatusCode() === 200, "Paginated page /news?page=2 returns HTTP 200 OK");
+assertCheck(str_contains($page2Html, '<link rel="canonical" href="' . $canonicalDomain . '/news?page=2">'), "Paginated page canonical correctly preserves ?page=2 parameter");
+
+$page1Req = Request::create('/news?page=1', 'GET');
+$page1Res = $httpKernel->handle($page1Req);
+$page1Html = $page1Res->getContent();
+assertCheck(str_contains($page1Html, '<link rel="canonical" href="' . $canonicalDomain . '/news">'), "Page 1 canonical URL normalizes to root /news without ?page=1");
+
+// ---------------------------------------------------------------------
+// TEST 15: CONTENT IMPORT & EXPORT SEO FIELD PRESERVATION
+// ---------------------------------------------------------------------
+echo PHP_EOL . "--- 15. Testing Content Model SEO Field Integrity ---" . PHP_EOL;
+$testArticleInstance = new Article([
+    'title' => 'Sample Field Verification Story',
+    'slug' => 'sample-field-verification-story',
+    'meta_title' => 'Custom Meta Title for Search Engines',
+    'meta_description' => 'A custom description crafted specifically for Google search snippets.',
+    'source_name' => 'BCCI Media Wire',
+    'source_url' => 'https://www.bcci.tv/news/press-release',
+    'featured_image' => 'assets/images/cricket/cricbail_share_card.jpg',
+]);
+
+assertCheck($testArticleInstance->meta_title === 'Custom Meta Title for Search Engines', "Article model preserves meta_title attribute");
+assertCheck($testArticleInstance->meta_description === 'A custom description crafted specifically for Google search snippets.', "Article model preserves meta_description attribute");
+assertCheck($testArticleInstance->source_name === 'BCCI Media Wire', "Article model preserves source_name attribute");
+assertCheck($testArticleInstance->source_url === 'https://www.bcci.tv/news/press-release', "Article model preserves source_url attribute");
+assertCheck($testArticleInstance->featured_image === 'assets/images/cricket/cricbail_share_card.jpg', "Article model preserves featured_image attribute");
+
+// ---------------------------------------------------------------------
 // SUMMARY REPORT
 // ---------------------------------------------------------------------
 echo PHP_EOL . "=====================================================================" . PHP_EOL;

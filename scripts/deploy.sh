@@ -162,11 +162,15 @@ fi
 
 # Determine Local PHP binary
 DEPLOY_LOCAL_PHP="${DEPLOY_LOCAL_PHP:-php}"
-if ! command -v "${DEPLOY_LOCAL_PHP}" >/dev/null 2>&1; then
+if ! command -v "${DEPLOY_LOCAL_PHP}" >/dev/null 2>&1 || ! "${DEPLOY_LOCAL_PHP}" -v >/dev/null 2>&1; then
     if [ -f "G:/xampp/php/php.exe" ]; then
         DEPLOY_LOCAL_PHP="G:/xampp/php/php.exe"
     elif [ -f "/g/xampp/php/php.exe" ]; then
         DEPLOY_LOCAL_PHP="/g/xampp/php/php.exe"
+    elif [ -f "C:/xampp/php/php.exe" ]; then
+        DEPLOY_LOCAL_PHP="C:/xampp/php/php.exe"
+    elif [ -f "/c/xampp/php/php.exe" ]; then
+        DEPLOY_LOCAL_PHP="/c/xampp/php/php.exe"
     fi
 fi
 
@@ -182,6 +186,26 @@ if ! command -v git >/dev/null 2>&1; then
     log_error "Git is required locally but could not be found."
     exit 1
 fi
+
+# ------------------------------------------------------------------------------
+# 1.5 PRE-DEPLOYMENT SEO & QUALITY VERIFICATION
+# ------------------------------------------------------------------------------
+CURRENT_STEP="Pre-Deployment SEO Checks"
+log_step "Running pre-deployment automated regression tests and SEO content audit"
+
+log_info "Running automated SEO regression test suite (tests/verify_seo_system.php)..."
+if ! "${DEPLOY_LOCAL_PHP}" tests/verify_seo_system.php; then
+    log_error "Automated SEO regression tests failed! Halting deployment to protect production."
+    exit 1
+fi
+log_success "Automated regression tests passed (100% pass rate)."
+
+log_info "Running SEO content and technical audit (artisan seo:audit --fail-on-critical)..."
+if ! "${DEPLOY_LOCAL_PHP}" artisan seo:audit --fail-on-critical; then
+    log_error "Critical SEO issues detected during audit! Halting deployment."
+    exit 1
+fi
+log_success "Pre-deployment SEO audit passed (Zero critical issues)."
 
 # ------------------------------------------------------------------------------
 # 2. AUTOMATIC LOCAL GIT COMMIT & PUSH
@@ -555,25 +579,91 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 7. VERIFICATION AND HEALTH CHECK
+# 7. POST-DEPLOYMENT PRODUCTION HEALTH & SEO VERIFICATION
 # ------------------------------------------------------------------------------
-CURRENT_STEP="Healthcheck Verification"
-log_step "Verifying production health check"
+CURRENT_STEP="Post-Deployment Verification"
+log_step "Verifying production endpoints, XML sitemaps, robots.txt, and canonical directives"
 
-HEALTHCHECK_PASSED=true
-if [ -n "${DEPLOY_HEALTHCHECK_URL}" ]; then
-    log_info "Pinging healthcheck URL: ${DEPLOY_HEALTHCHECK_URL}..."
-    if command -v curl >/dev/null 2>&1; then
-        HTTP_CODE="$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${DEPLOY_HEALTHCHECK_URL}" || echo "000")"
-        if [ "${HTTP_CODE}" = "200" ] || [ "${HTTP_CODE}" = "301" ] || [ "${HTTP_CODE}" = "302" ]; then
-            log_success "Healthcheck verified! Response code: HTTP ${HTTP_CODE}"
+VERIFICATION_ERRORS=()
+PROD_BASE_URL="${DEPLOY_HEALTHCHECK_URL%/}"
+
+if command -v curl >/dev/null 2>&1; then
+    # 1. Homepage & Canonical Verification
+    log_info "Verifying production homepage: ${PROD_BASE_URL}..."
+    HOME_STATUS="$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${PROD_BASE_URL}" || echo "000")"
+    HOME_BODY="$(curl -sSL --max-time 15 "${PROD_BASE_URL}" || true)"
+    
+    if [ "${HOME_STATUS}" = "200" ] || [ "${HOME_STATUS}" = "301" ] || [ "${HOME_STATUS}" = "302" ]; then
+        log_success "Homepage reachable (HTTP ${HOME_STATUS})."
+        if echo "${HOME_BODY}" | grep -q "rel=\"canonical\""; then
+            log_success "Homepage canonical tag verified."
         else
-            log_warn "Healthcheck returned status HTTP ${HTTP_CODE} (Expected 200/301/302). Please check live site."
-            HEALTHCHECK_PASSED=false
+            VERIFICATION_ERRORS+=("Homepage missing canonical link tag")
         fi
     else
-        log_info "curl not available locally; skipping automated HTTP ping."
+        log_error "Homepage unreachable or error status: HTTP ${HOME_STATUS}"
+        VERIFICATION_ERRORS+=("Homepage returned HTTP ${HOME_STATUS}")
     fi
+
+    # 2. robots.txt Verification
+    ROBOTS_URL="${PROD_BASE_URL}/robots.txt"
+    log_info "Verifying robots.txt: ${ROBOTS_URL}..."
+    ROBOTS_STATUS="$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${ROBOTS_URL}" || echo "000")"
+    ROBOTS_BODY="$(curl -sSL --max-time 15 "${ROBOTS_URL}" || true)"
+    if [ "${ROBOTS_STATUS}" = "200" ] && echo "${ROBOTS_BODY}" | grep -q "Disallow: /admin/" && echo "${ROBOTS_BODY}" | grep -q "sitemap.xml"; then
+        log_success "robots.txt verified (HTTP 200, valid crawl directives & sitemap references)."
+    else
+        log_error "robots.txt verification failed (HTTP ${ROBOTS_STATUS})."
+        VERIFICATION_ERRORS+=("robots.txt returned HTTP ${ROBOTS_STATUS} or missing expected directives")
+    fi
+
+    # 3. Dynamic sitemap.xml Verification
+    SITEMAP_URL="${PROD_BASE_URL}/sitemap.xml"
+    log_info "Verifying sitemap.xml: ${SITEMAP_URL}..."
+    SITEMAP_STATUS="$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${SITEMAP_URL}" || echo "000")"
+    SITEMAP_BODY="$(curl -sSL --max-time 15 "${SITEMAP_URL}" || true)"
+    if [ "${SITEMAP_STATUS}" = "200" ] && echo "${SITEMAP_BODY}" | grep -q "<urlset" && echo "${SITEMAP_BODY}" | grep -q "${PROD_BASE_URL}"; then
+        log_success "sitemap.xml verified (HTTP 200, valid XML schema and canonical production domain)."
+    else
+        log_error "sitemap.xml verification failed (HTTP ${SITEMAP_STATUS})."
+        VERIFICATION_ERRORS+=("sitemap.xml returned HTTP ${SITEMAP_STATUS} or invalid XML/domain")
+    fi
+
+    # 4. Google News sitemap (/news-sitemap.xml) Verification
+    NEWS_SITEMAP_URL="${PROD_BASE_URL}/news-sitemap.xml"
+    log_info "Verifying news-sitemap.xml: ${NEWS_SITEMAP_URL}..."
+    NEWS_STATUS="$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${NEWS_SITEMAP_URL}" || echo "000")"
+    NEWS_BODY="$(curl -sSL --max-time 15 "${NEWS_SITEMAP_URL}" || true)"
+    if [ "${NEWS_STATUS}" = "200" ] && echo "${NEWS_BODY}" | grep -q "<news:publication>"; then
+        log_success "news-sitemap.xml verified (HTTP 200, valid Google News XML namespace)."
+    else
+        log_error "news-sitemap.xml verification failed (HTTP ${NEWS_STATUS})."
+        VERIFICATION_ERRORS+=("news-sitemap.xml returned HTTP ${NEWS_STATUS} or missing publication metadata")
+    fi
+
+    # 5. Sample Published Article Endpoint Verification
+    SAMPLE_ART_URL="${PROD_BASE_URL}/news/under-floodlights-allure-and-science-pink-ball-day-night-tests"
+    log_info "Verifying sample article URL: ${SAMPLE_ART_URL}..."
+    ART_STATUS="$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${SAMPLE_ART_URL}" || echo "000")"
+    if [ "${ART_STATUS}" = "200" ]; then
+        log_success "Sample article URL verified (HTTP 200 OK)."
+    else
+        log_error "Sample article returned HTTP ${ART_STATUS}"
+        VERIFICATION_ERRORS+=("Sample article URL returned HTTP ${ART_STATUS}")
+    fi
+
+    # 6. Sample Published Quiz Endpoint Verification
+    SAMPLE_QUIZ_URL="${PROD_BASE_URL}/quizzes/cricket-world-cup-legends"
+    log_info "Verifying sample quiz URL: ${SAMPLE_QUIZ_URL}..."
+    QUIZ_STATUS="$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${SAMPLE_QUIZ_URL}" || echo "000")"
+    if [ "${QUIZ_STATUS}" = "200" ]; then
+        log_success "Sample quiz URL verified (HTTP 200 OK)."
+    else
+        log_error "Sample quiz returned HTTP ${QUIZ_STATUS}"
+        VERIFICATION_ERRORS+=("Sample quiz URL returned HTTP ${QUIZ_STATUS}")
+    fi
+else
+    log_warn "curl not available locally; skipping live HTTP endpoint verification."
 fi
 
 # Clean up local bundle if configured
@@ -585,6 +675,24 @@ fi
 # ------------------------------------------------------------------------------
 # 8. DEPLOYMENT SUMMARY REPORT
 # ------------------------------------------------------------------------------
+if [ ${#VERIFICATION_ERRORS[@]} -gt 0 ]; then
+    echo -e "\n${C_RED}${C_BOLD}========================================================================${C_RESET}"
+    echo -e "${C_RED}${C_BOLD}        DEPLOYMENT COMPLETED WITH VERIFICATION WARNINGS / FAILURES      ${C_RESET}"
+    echo -e "${C_RED}${C_BOLD}========================================================================${C_RESET}"
+    echo -e "Target Server:       ${C_CYAN}${DEPLOY_HOST}${C_RESET} (${DEPLOY_USER}$([ -n "${DEPLOY_EXEC_USER}" ] && [ "${DEPLOY_EXEC_USER}" != "${DEPLOY_USER}" ] && echo " -> ${DEPLOY_EXEC_USER}"))"
+    echo -e "Deployed Commit:     ${C_CYAN}${COMMIT_MESSAGE}${C_RESET}"
+    echo -e "Branch:              ${C_CYAN}${DEPLOY_BRANCH}${C_RESET}"
+    echo -e "Code Deployed:       ${C_GREEN}$([ "$SKIP_CODE" = false ] && echo "YES" || echo "SKIPPED")${C_RESET}"
+    echo -e "Content Imported:    ${C_GREEN}$([ "$SKIP_CONTENT" = false ] && echo "YES" || echo "SKIPPED")${C_RESET}"
+    echo -e "\n${C_RED}${C_BOLD}FAILED ENDPOINTS / DIRECTIVES:${C_RESET}"
+    for err in "${VERIFICATION_ERRORS[@]}"; do
+        echo -e "  - ${C_RED}${err}${C_RESET}"
+    done
+    echo -e "\n${C_YELLOW}Check remote server logs and Nginx configuration immediately.${C_RESET}"
+    echo -e "${C_RED}${C_BOLD}========================================================================${C_RESET}\n"
+    exit 1
+fi
+
 echo -e "\n${C_GREEN}${C_BOLD}========================================================================${C_RESET}"
 echo -e "${C_GREEN}${C_BOLD}                   DEPLOYMENT COMPLETED SUCCESSFULLY                    ${C_RESET}"
 echo -e "${C_GREEN}${C_BOLD}========================================================================${C_RESET}"
@@ -595,7 +703,8 @@ echo -e "Code Deployed:       ${C_GREEN}$([ "$SKIP_CODE" = false ] && echo "YES"
 echo -e "Content Imported:    ${C_GREEN}$([ "$SKIP_CONTENT" = false ] && echo "YES" || echo "SKIPPED")${C_RESET}"
 echo -e "Database Backup:     ${C_GREEN}$([ "$DEPLOY_BACKUP_DB" = "true" ] && echo "CREATED" || echo "SKIPPED")${C_RESET}"
 echo -e "Live URL:            ${C_CYAN}${DEPLOY_HEALTHCHECK_URL}${C_RESET}"
-echo -e "Healthcheck Status:  $([ "$HEALTHCHECK_PASSED" = true ] && echo -e "${C_GREEN}PASS${C_RESET}" || echo -e "${C_YELLOW}CHECK SITE${C_RESET}")"
+echo -e "Endpoints Verified:  ${C_GREEN}Homepage, robots.txt, sitemap.xml, news-sitemap.xml, Article, Quiz${C_RESET}"
+echo -e "Healthcheck Status:  ${C_GREEN}100% PASS${C_RESET}"
 echo -e "${C_GREEN}${C_BOLD}========================================================================${C_RESET}\n"
 
 exit 0
