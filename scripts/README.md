@@ -76,19 +76,21 @@ ssh -p 22 <DEPLOY_USER>@<DEPLOY_HOST> "echo 'SSH Connection OK'"
 
 ## 2. Normal Everyday Deployment Workflow
 
-Once configured, normal deployment is a simple, repeatable routine:
+You do NOT need to run any manual `git add`, `git commit`, or `git push` commands. The deployment script handles everything automatically:
 
-1. **Commit and Push Your Local Code**:
-   ```bash
-   git add .
-   git commit -m "Add new features and cricket articles"
-   git push origin main
-   ```
+```bash
+bash scripts/deploy.sh
+```
 
-2. **Run the One-Command Deployment**:
-   ```bash
-   bash scripts/deploy.sh
-   ```
+*(Optional: You can supply a custom commit message with `-m "Your message"`)*
+```bash
+bash scripts/deploy.sh -m "Added new IPL articles and updated layout"
+```
+
+The script will automatically:
+1. **Detect all modified or new files** in your local project.
+2. **Stage and commit** them automatically (`git add -A && git commit -m "..."`).
+3. **Push to GitHub** (`git push origin main`).
 
 The script will automatically:
 - Verify that your working tree is clean and local commits are pushed to GitHub.

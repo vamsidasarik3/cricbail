@@ -8,6 +8,8 @@
 #   bash scripts/deploy.sh [OPTIONS]
 #
 # Options:
+#   -m, --message    Custom Git commit message (default: "Auto-deploy: YYYY-MM-DD HH:MM:SS")
+#   --no-git         Skip automatic local git add, commit, and push
 #   --dry-run        Simulate the deployment and content import without modifying production
 #   --skip-content   Deploy Git code, run migrations, and rebuild caches without content bundle
 #   --skip-code      Deploy and import content bundle only, skipping git pull / composer install
@@ -57,9 +59,19 @@ SKIP_CODE=false
 NO_BACKUP=false
 FORCE_IMPORT=false
 CUSTOM_CONFIG=""
+COMMIT_MESSAGE_INPUT=""
+AUTO_GIT=true
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        -m|--message)
+            COMMIT_MESSAGE_INPUT="$2"
+            shift 2
+            ;;
+        --no-git|--skip-git)
+            AUTO_GIT=false
+            shift
+            ;;
         --dry-run)
             DRY_RUN=true
             shift
@@ -172,27 +184,10 @@ if ! command -v git >/dev/null 2>&1; then
 fi
 
 # ------------------------------------------------------------------------------
-# 2. VERIFY LOCAL GIT REPOSITORY AND WORKING TREE
+# 2. AUTOMATIC LOCAL GIT COMMIT & PUSH
 # ------------------------------------------------------------------------------
-CURRENT_STEP="Verify Local Git State"
-log_step "Verifying local Git repository state and working tree"
-
-# Check for uncommitted changes
-DIRTY_FILES="$(git status --porcelain || true)"
-if [ -n "${DIRTY_FILES}" ]; then
-    if [ "$DRY_RUN" = true ]; then
-        echo -e "${C_YELLOW}${C_BOLD}[WARN] Local working tree has uncommitted changes (Allowed in DRY-RUN mode for simulation only):${C_RESET}"
-        echo -e "${C_YELLOW}${DIRTY_FILES}${C_RESET}\n"
-    else
-        echo -e "${C_RED}${C_BOLD}========================================================================${C_RESET}"
-        log_error "WORKING TREE HAS UNCOMMITTED CHANGES! DEPLOYMENT STOPPED."
-        echo -e "${C_YELLOW}Per safety requirements, uncommitted changes cannot be deployed automatically.${C_RESET}"
-        echo -e "${C_YELLOW}Please commit and push your changes to GitHub before deploying:${C_RESET}"
-        echo -e "${DIRTY_FILES}"
-        echo -e "${C_RED}${C_BOLD}========================================================================${C_RESET}"
-        exit 1
-    fi
-fi
+CURRENT_STEP="Local Git Sync"
+log_step "Managing local Git repository state and GitHub synchronization"
 
 # Check current branch
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
@@ -204,29 +199,59 @@ if [ "${CURRENT_BRANCH}" != "${DEPLOY_BRANCH}" ]; then
     exit 1
 fi
 
-# Check if local commits are pushed to remote
-log_info "Checking sync with remote repository (origin/${DEPLOY_BRANCH})..."
-git fetch origin "${DEPLOY_BRANCH}" --quiet
-
-LOCAL_COMMIT="$(git rev-parse HEAD)"
-REMOTE_COMMIT="$(git rev-parse "origin/${DEPLOY_BRANCH}")"
-
-if [ "${LOCAL_COMMIT}" != "${REMOTE_COMMIT}" ]; then
-    AHEAD_COMMITS="$(git rev-list --count "origin/${DEPLOY_BRANCH}..HEAD")"
-    if [ "${AHEAD_COMMITS}" -gt 0 ]; then
-        echo -e "${C_RED}${C_BOLD}========================================================================${C_RESET}"
-        log_error "LOCAL COMMITS ARE NOT PUSHED TO GITHUB! (${AHEAD_COMMITS} commit(s) ahead)"
-        echo -e "${C_YELLOW}Please push your code changes to GitHub first:${C_RESET}"
-        echo -e "  git push origin ${DEPLOY_BRANCH}"
-        echo -e "${C_RED}${C_BOLD}========================================================================${C_RESET}"
-        exit 1
+if [ "${AUTO_GIT}" = true ]; then
+    DIRTY_FILES="$(git status --porcelain || true)"
+    if [ -n "${DIRTY_FILES}" ]; then
+        log_info "Uncommitted changes detected in local repository."
+        if [ "$DRY_RUN" = true ]; then
+            echo -e "${C_YELLOW}${C_BOLD}[DRY-RUN] Would stage and commit the following changes:${C_RESET}"
+            echo -e "${C_YELLOW}${DIRTY_FILES}${C_RESET}\n"
+        else
+            DEFAULT_COMMIT_MSG="Auto-deploy: $(date +'%Y-%m-%d %H:%M:%S')"
+            MSG="${COMMIT_MESSAGE_INPUT:-$DEFAULT_COMMIT_MSG}"
+            log_info "Staging all local changes (git add -A)..."
+            git add -A
+            log_info "Committing changes: '${MSG}'..."
+            git commit -m "${MSG}"
+            log_success "Created local commit: $(git log -1 --pretty=format:'%s (%h)')"
+        fi
     else
-        log_warn "Local HEAD is behind remote origin/${DEPLOY_BRANCH}. Remote has changes not in local."
+        log_info "Working tree is clean; no uncommitted changes."
+    fi
+
+    # Push to remote GitHub
+    log_info "Checking sync with remote repository (origin/${DEPLOY_BRANCH})..."
+    git fetch origin "${DEPLOY_BRANCH}" --quiet || true
+
+    AHEAD_COMMITS="$(git rev-list --count "origin/${DEPLOY_BRANCH}..HEAD" 2>/dev/null || echo "0")"
+    if [ "${AHEAD_COMMITS}" -gt 0 ]; then
+        if [ "$DRY_RUN" = true ]; then
+            log_info "[DRY-RUN] Would push ${AHEAD_COMMITS} commit(s) to GitHub (origin/${DEPLOY_BRANCH})."
+        else
+            log_info "Pushing ${AHEAD_COMMITS} commit(s) to GitHub (origin/${DEPLOY_BRANCH})..."
+            git push origin "${DEPLOY_BRANCH}"
+            log_success "Successfully pushed to GitHub (origin/${DEPLOY_BRANCH})!"
+        fi
+    else
+        log_success "GitHub repository (origin/${DEPLOY_BRANCH}) is up-to-date with local."
+    fi
+else
+    # If AUTO_GIT is disabled via --no-git, verify working tree is clean
+    DIRTY_FILES="$(git status --porcelain || true)"
+    if [ -n "${DIRTY_FILES}" ]; then
+        if [ "$DRY_RUN" = true ]; then
+            echo -e "${C_YELLOW}${C_BOLD}[WARN] Local working tree has uncommitted changes (--no-git mode):${C_RESET}"
+            echo -e "${C_YELLOW}${DIRTY_FILES}${C_RESET}\n"
+        else
+            log_error "WORKING TREE HAS UNCOMMITTED CHANGES! Automatic Git sync was disabled (--no-git)."
+            echo -e "${DIRTY_FILES}"
+            exit 1
+        fi
     fi
 fi
 
 COMMIT_MESSAGE="$(git log -1 --pretty=format:'%s (%h)')"
-log_success "Git repository verified and up to date! Commit: ${COMMIT_MESSAGE}"
+log_success "Git repository ready! Current deployment commit: ${COMMIT_MESSAGE}"
 
 # ------------------------------------------------------------------------------
 # 3. EXPORT LOCAL CONTENT BUNDLE (IF ENABLED)
