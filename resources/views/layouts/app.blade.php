@@ -153,6 +153,15 @@
         .footer-link:hover {
             color: var(--cb-accent);
         }
+        .footer-credit-link {
+            color: var(--cb-accent);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+        .footer-credit-link:hover {
+            color: var(--cb-accent-hover);
+            text-decoration: underline;
+        }
         /* Article formatting */
         .article-content {
             font-size: 1.15rem;
@@ -280,11 +289,14 @@
 
             <hr class="border-secondary my-4">
 
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 small text-secondary">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 small text-secondary text-center text-md-start">
                 <div>
-                    &copy; {{ date('Y') }} <strong>CricBail</strong>. All rights reserved. Professional Cricket Journalism.
+                    <div>&copy; {{ date('Y') }} <strong>CricBail</strong>. All rights reserved. Professional Cricket Journalism.</div>
+                    <div class="mt-1">
+                        Designed and developed by <a href="https://www.vamsidev.com/" target="_blank" rel="noopener noreferrer" class="footer-credit-link fw-semibold">https://www.vamsidev.com/</a>
+                    </div>
                 </div>
-                <div>
+                <div class="mt-2 mt-md-0">
                     <a href="{{ route('about') }}" class="text-secondary text-decoration-none me-3">About</a>
                     <a href="{{ route('contact') }}" class="text-secondary text-decoration-none me-3">Contact</a>
                     <a href="{{ route('privacy') }}" class="text-secondary text-decoration-none">Privacy Policy</a>
