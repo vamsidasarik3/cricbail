@@ -425,11 +425,14 @@ if [ ! -f "artisan" ]; then
     exit 1
 fi
 
-# Verify remote Git status
-REMOTE_DIRTY="$(git status --porcelain || true)"
-if [ -n "${REMOTE_DIRTY}" ]; then
-    echo "ERROR: Production server working tree has uncommitted modifications:"
-    echo "${REMOTE_DIRTY}"
+# Clean transient storage/cache gitignore changes (e.g. line endings on server)
+git checkout -- storage/ bootstrap/cache/ 2>/dev/null || true
+
+# Verify remote Git status for actual application code files
+REMOTE_CODE_DIRTY="$(git status --porcelain | grep -v 'storage/' | grep -v 'bootstrap/cache/' || true)"
+if [ -n "${REMOTE_CODE_DIRTY}" ]; then
+    echo "ERROR: Production server working tree has uncommitted modifications in application code:"
+    echo "${REMOTE_CODE_DIRTY}"
     echo "Aborting deployment to protect server-side state."
     exit 1
 fi
