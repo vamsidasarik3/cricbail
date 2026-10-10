@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\Route;
 // Homepage
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+// SEO Permanent 301 Redirects (Legacy & Test URLs placed before wildcard routes)
+Route::permanentRedirect('/category/ipl-2026', '/category/ipl');
+Route::permanentRedirect('/news/ipl-2026-auction-highlights', '/category/ipl');
+
 // News Articles & Categories
 Route::get('/news', [NewsController::class, 'index'])->name('news.index');
 Route::get('/category/{slug}', [NewsController::class, 'category'])->name('news.category');
@@ -44,8 +48,10 @@ Route::get('/contact', [PageController::class, 'contact'])->name('contact');
 Route::post('/contact', [PageController::class, 'submitContact'])->name('contact.submit');
 Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->name('privacy');
 
-// SEO XML Sitemap
+// SEO XML Sitemaps & Robots
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/news-sitemap.xml', [SitemapController::class, 'news'])->name('sitemap.news');
+Route::get('/robots.txt', [SitemapController::class, 'robots'])->name('robots');
 
 /*
 |--------------------------------------------------------------------------

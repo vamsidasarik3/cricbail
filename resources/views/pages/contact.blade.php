@@ -1,7 +1,17 @@
 @extends('layouts.app')
 
-@section('title', 'Contact Editorial Team - CricBail')
+@section('title', App\Services\SeoService::title('Contact Editorial Team'))
 @section('meta_description', 'Connect with the CricBail editorial desk, submit match commentary feedback, or send story inquiries.')
+@section('canonical_url', App\Services\SeoService::canonicalUrl('contact'))
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode(App\Services\SeoService::breadcrumbSchema([
+    ['name' => 'Home', 'url' => App\Services\SeoService::canonicalUrl('/')],
+    ['name' => 'Contact Us', 'url' => App\Services\SeoService::canonicalUrl('contact')]
+]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="container py-3">

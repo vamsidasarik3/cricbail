@@ -1,7 +1,19 @@
+@inject('seo', 'App\Services\SeoService')
 @extends('layouts.app')
 
-@section('title', $category->name . ' - Cricket News, Reports & Highlights | CricBail')
+@section('title', $category->name . ' - Cricket News, Reports & Highlights')
 @section('meta_description', $category->description ?: 'Browse the latest cricket coverage and articles in ' . $category->name . ' on CricBail.')
+@section('canonical_url', $seo->canonicalUrl('/category/' . $category->slug))
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode($seo->breadcrumbJsonLd([
+    'Home' => route('home'),
+    'Cricket News' => route('news.index'),
+    $category->name => route('news.category', $category->slug),
+]), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="container py-2">
@@ -31,9 +43,13 @@
         <div class="col-md-6 col-lg-4">
             <article class="news-card">
                 <a href="{{ route('news.show', $article->slug) }}">
-                    <img src="{{ asset($article->featured_image ?: 'assets/images/cricket/stadium_floodlights.svg') }}" 
+                    <img src="{{ asset($article->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg') }}" 
                          alt="{{ $article->title }}" 
-                         class="card-thumbnail">
+                         class="card-thumbnail"
+                         loading="lazy"
+                         decoding="async"
+                         width="400"
+                         height="225">
                 </a>
                 <div class="p-4 d-flex flex-column flex-grow-1 justify-content-between">
                     <div>

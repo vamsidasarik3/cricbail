@@ -5,24 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Title & SEO Meta Tags -->
-    <title>@yield('title', 'CricBail - Cricket News, In-Depth Analysis & Quizzes')</title>
-    <meta name="description" content="@yield('meta_description', 'Your premier destination for timely cricket news, tactical tournament analysis, franchise updates, and interactive cricket trivia.')">
-    <meta name="robots" content="@yield('robots', 'index, follow')">
-    <link rel="canonical" href="@yield('canonical_url', url()->current())">
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="@yield('og_type', 'website')">
-    <meta property="og:url" content="@yield('canonical_url', url()->current())">
-    <meta property="og:title" content="@yield('title', 'CricBail - Cricket News, In-Depth Analysis & Quizzes')">
-    <meta property="og:description" content="@yield('meta_description', 'Your premier destination for timely cricket news, tactical tournament analysis, and cricket trivia.')">
-    <meta property="og:image" content="@yield('og_image', asset('assets/images/cricket/stadium_floodlights.svg'))">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="@yield('title', 'CricBail - Cricket News & Quizzes')">
-    <meta name="twitter:description" content="@yield('meta_description', 'Timely cricket news, tactical tournament analysis, and interactive cricket trivia.')">
-    <meta name="twitter:image" content="@yield('og_image', asset('assets/images/cricket/stadium_floodlights.svg'))">
+    <!-- Centralized Dynamic SEO System -->
+    @include('partials.seo')
 
     <!-- Bootstrap 5 CSS (Local) -->
     <link rel="stylesheet" href="{{ asset('assets/css/bootstrap.min.css') }}">
@@ -193,7 +177,7 @@
             <div class="d-flex align-items-center gap-3">
                 <a href="{{ route('sitemap') }}" class="text-decoration-none text-secondary small">Sitemap</a>
                 <span class="text-secondary">&bull;</span>
-                <a href="{{ route('admin.login') }}" class="text-decoration-none text-secondary small">Admin Portal</a>
+                <a href="{{ route('admin.login') }}" class="text-decoration-none text-secondary small" rel="nofollow">Admin Portal</a>
             </div>
         </div>
     </div>
@@ -273,7 +257,7 @@
                         <li><a href="{{ route('news.index') }}" class="footer-link">All Published Articles</a></li>
                         <li><a href="{{ route('home') }}#quizzes-section" class="footer-link">Cricket Quizzes & Trivia</a></li>
                         <li><a href="{{ route('sitemap') }}" class="footer-link">XML Sitemap</a></li>
-                        <li><a href="{{ route('admin.login') }}" class="footer-link">Editorial Desk (Admin)</a></li>
+                        <li><a href="{{ route('admin.login') }}" class="footer-link" rel="nofollow">Editorial Desk (Admin)</a></li>
                     </ul>
                 </div>
 
@@ -305,9 +289,9 @@
         </div>
     </footer>
 
-    <!-- jQuery & Bootstrap 5 Bundle JS (Local) -->
-    <script src="{{ asset('assets/js/jquery.min.js') }}"></script>
-    <script src="{{ asset('assets/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- Local JavaScript Assets (Deferred to eliminate render-blocking) -->
+    <script src="{{ asset('assets/js/jquery.min.js') }}" defer></script>
+    <script src="{{ asset('assets/js/bootstrap.bundle.min.js') }}" defer></script>
     @stack('scripts')
 </body>
 </html>

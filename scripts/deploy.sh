@@ -489,9 +489,12 @@ if [ "${SKIP_CODE}" = "false" ]; then
     "${DEPLOY_REMOTE_COMPOSER}" install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 fi
 
-# Migrations
+# Migrations & SEO Data Cleanup
 echo "Running pending migrations..."
 "${DEPLOY_REMOTE_PHP}" artisan migrate --force
+
+echo "Executing SEO test data hygiene check..."
+"${DEPLOY_REMOTE_PHP}" artisan seo:clean-test-data || true
 
 # Content Import
 if [ "${SKIP_CONTENT}" = "false" ] && [ -n "${REMOTE_BUNDLE_PATH}" ] && [ -f "${REMOTE_BUNDLE_PATH}" ]; then
@@ -508,6 +511,8 @@ fi
 # Storage Link & Optimization Caches
 echo "Updating storage links and rebuilding Laravel application caches..."
 "${DEPLOY_REMOTE_PHP}" artisan storage:link || true
+"${DEPLOY_REMOTE_PHP}" artisan config:clear || true
+"${DEPLOY_REMOTE_PHP}" artisan cache:clear || true
 "${DEPLOY_REMOTE_PHP}" artisan config:cache
 "${DEPLOY_REMOTE_PHP}" artisan route:cache
 "${DEPLOY_REMOTE_PHP}" artisan view:cache

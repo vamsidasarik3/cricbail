@@ -1,10 +1,29 @@
+@inject('seo', 'App\Services\SeoService')
 @extends('layouts.app')
 
-@section('title', ($article->meta_title ?: $article->title) . ' | CricBail')
+@section('title', $article->meta_title ?: $article->title)
 @section('meta_description', $article->meta_description ?: $article->excerpt)
-@section('canonical_url', route('news.show', $article->slug))
-@section('og_image', asset($article->featured_image ?: 'assets/images/cricket/stadium_floodlights.svg'))
+@section('canonical_url', $seo->canonicalUrl('/news/' . $article->slug))
+@section('og_image', asset($article->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg'))
 @section('og_type', 'article')
+@section('article_published_time', $article->published_at->toIso8601String())
+@section('article_modified_time', ($article->updated_at ?: $article->published_at)->toIso8601String())
+@section('article_author', $article->author->name)
+@section('article_section', $article->category->name)
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode($seo->articleJsonLd($article), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+</script>
+<script type="application/ld+json">
+{!! json_encode($seo->breadcrumbJsonLd([
+    'Home' => route('home'),
+    'Cricket News' => route('news.index'),
+    $article->category->name => route('news.category', $article->category->slug),
+    $article->title => route('news.show', $article->slug),
+]), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="container py-2">
@@ -67,9 +86,13 @@
 
                 <!-- Featured Image -->
                 <figure class="my-4">
-                    <img src="{{ asset($article->featured_image ?: 'assets/images/cricket/stadium_floodlights.svg') }}" 
+                    <img src="{{ asset($article->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg') }}" 
                          alt="{{ $article->title }}" 
-                         class="img-fluid rounded-3 w-100 shadow-sm" style="max-height: 480px; object-fit: cover;">
+                         class="img-fluid rounded-3 w-100 shadow-sm"
+                         fetchpriority="high"
+                         width="1200"
+                         height="675"
+                         style="max-height: 480px; object-fit: cover; aspect-ratio: 16/9;">
                     <figcaption class="figure-caption text-center mt-2 small text-muted">
                         CricBail Match Centre &bull; {{ $article->category->name }} Editorial Special
                     </figcaption>
@@ -108,7 +131,7 @@
                         </a>
                     </div>
                     <div>
-                        Canonical Reference: <code>{{ route('news.show', $article->slug) }}</code>
+                        Canonical Reference: <code>{{ App\Services\SeoService::canonicalUrl('news/' . $article->slug) }}</code>
                     </div>
                 </div>
             </article>
@@ -224,9 +247,14 @@
                         @forelse($relatedArticles as $related)
                         <div class="d-flex gap-3 align-items-start pb-2 border-bottom">
                             <a href="{{ route('news.show', $related->slug) }}" class="flex-shrink-0">
-                                <img src="{{ asset($related->featured_image ?: 'assets/images/cricket/stadium_floodlights.svg') }}" 
+                                <img src="{{ asset($related->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg') }}" 
                                      alt="{{ $related->title }}" 
-                                     class="rounded" style="width: 75px; height: 60px; object-fit: cover;">
+                                     class="rounded" 
+                                     loading="lazy"
+                                     decoding="async"
+                                     width="75"
+                                     height="60"
+                                     style="width: 75px; height: 60px; object-fit: cover;">
                             </a>
                             <div>
                                 <a href="{{ route('news.category', $related->category->slug) }}" class="category-badge mb-1" style="font-size: 0.65rem; padding: 0.15rem 0.4rem;">
@@ -267,17 +295,20 @@
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        $('#btnShareArticle').on('click', function(e) {
-            e.preventDefault();
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(window.location.href).then(function() {
-                    alert('Article link copied to clipboard!');
-                });
-            } else {
-                prompt('Copy this article link:', window.location.href);
-            }
-        });
+    document.addEventListener('DOMContentLoaded', function() {
+        var btn = document.getElementById('btnShareArticle');
+        if (btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(window.location.href).then(function() {
+                        alert('Article link copied to clipboard!');
+                    });
+                } else {
+                    prompt('Copy this article link:', window.location.href);
+                }
+            });
+        }
     });
 </script>
 @endpush

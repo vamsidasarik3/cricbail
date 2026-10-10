@@ -1,7 +1,21 @@
 @extends('layouts.app')
 
-@section('title', $quiz->title . ' - Cricket Quiz - CricBail')
-@section('meta_description', Str::limit($quiz->description, 160))
+@section('title', App\Services\SeoService::title($quiz->title . ' - Cricket Quiz'))
+@section('meta_description', Str::limit(strip_tags($quiz->description), 160))
+@section('canonical_url', App\Services\SeoService::canonicalUrl('quizzes/' . $quiz->slug))
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode(App\Services\SeoService::quizSchema($quiz), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
+</script>
+<script type="application/ld+json">
+{!! json_encode(App\Services\SeoService::breadcrumbSchema([
+    ['name' => 'Home', 'url' => App\Services\SeoService::canonicalUrl('/')],
+    ['name' => 'Cricket Quizzes', 'url' => App\Services\SeoService::canonicalUrl('quizzes')],
+    ['name' => $quiz->title, 'url' => App\Services\SeoService::canonicalUrl('quizzes/' . $quiz->slug)]
+]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="container py-4">

@@ -1,7 +1,17 @@
 @extends('layouts.app')
 
-@section('title', 'Cricket Quizzes & Trivia Challenges - CricBail')
+@section('title', App\Services\SeoService::title('Cricket Quizzes & Trivia Challenges'))
 @section('meta_description', 'Put your cricket knowledge to the ultimate test with CricBail\'s 10-question, 2-minute timed quizzes covering World Cups, IPL, Test cricket legends, and stats.')
+@section('canonical_url', App\Services\SeoService::canonicalUrl('quizzes', ['page']))
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode(App\Services\SeoService::breadcrumbSchema([
+    ['name' => 'Home', 'url' => App\Services\SeoService::canonicalUrl('/')],
+    ['name' => 'Cricket Quizzes', 'url' => App\Services\SeoService::canonicalUrl('quizzes')]
+]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="container py-4">

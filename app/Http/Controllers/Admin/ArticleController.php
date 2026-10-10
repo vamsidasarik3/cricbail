@@ -77,6 +77,8 @@ class ArticleController extends Controller
             'featured_image' => ['nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'meta_title' => ['nullable', 'string', 'max:100'],
             'meta_description' => ['nullable', 'string', 'max:255'],
+            'source_name' => ['nullable', 'string', 'max:100'],
+            'source_url' => ['nullable', 'url', 'max:500'],
         ], [
             'category_id.required' => 'Please select a valid cricket news category.',
             'featured_image.image' => 'The featured image must be a valid image file.',
@@ -142,6 +144,8 @@ class ArticleController extends Controller
             'featured_image' => ['nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'meta_title' => ['nullable', 'string', 'max:100'],
             'meta_description' => ['nullable', 'string', 'max:255'],
+            'source_name' => ['nullable', 'string', 'max:100'],
+            'source_url' => ['nullable', 'url', 'max:500'],
         ], [
             'category_id.required' => 'Please select a valid cricket news category.',
             'featured_image.image' => 'The featured image must be a valid image file.',

@@ -1,7 +1,17 @@
 @extends('layouts.app')
 
-@section('title', 'Privacy Policy - CricBail')
+@section('title', App\Services\SeoService::title('Privacy Policy'))
 @section('meta_description', 'Review the CricBail Privacy Policy regarding data protection, reader comments, analytics, and cookie transparency.')
+@section('canonical_url', App\Services\SeoService::canonicalUrl('privacy'))
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode(App\Services\SeoService::breadcrumbSchema([
+    ['name' => 'Home', 'url' => App\Services\SeoService::canonicalUrl('/')],
+    ['name' => 'Privacy Policy', 'url' => App\Services\SeoService::canonicalUrl('privacy')]
+]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="container py-3">
@@ -20,7 +30,7 @@
                 <p class="text-muted small mb-4">Last Updated: October 2026</p>
 
                 <p>
-                    At <strong>CricBail</strong>, accessible at <code>http://cricbail.vkrshna.in:8084</code>, we consider the privacy of our visitors of supreme importance. This Privacy Policy document outlines the types of information collected and how it is used.
+                    At <strong>CricBail</strong>, accessible at <code>{{ config('seo.canonical_domain', 'https://www.cricbail.com') }}</code>, we consider the privacy of our visitors of supreme importance. This Privacy Policy document outlines the types of information collected and how it is used.
                 </p>
 
                 <h3 class="h5 fw-bold text-dark mt-4 mb-2">1. Reader Comments</h3>

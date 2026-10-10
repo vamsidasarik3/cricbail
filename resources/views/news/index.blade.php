@@ -1,7 +1,17 @@
 @extends('layouts.app')
 
-@section('title', ($selectedCategory ? $selectedCategory->name . ' News - ' : '') . 'Cricket News & Tournament Updates | CricBail')
+@section('title', App\Services\SeoService::title(($selectedCategory ?? null) ? $selectedCategory->name . ' Cricket News' : 'Cricket News & Tournament Updates'))
 @section('meta_description', 'Browse the latest cricket news, tactical editorial breakdowns, match reports, and player profiles across all formats on CricBail.')
+@section('canonical_url', App\Services\SeoService::canonicalUrl(request()->path(), ['page']))
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode(App\Services\SeoService::breadcrumbSchema([
+    ['name' => 'Home', 'url' => App\Services\SeoService::canonicalUrl('/')],
+    ['name' => 'Cricket News', 'url' => App\Services\SeoService::canonicalUrl('news')]
+]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="container py-2">
@@ -38,7 +48,7 @@
                 All Stories
             </a>
             @foreach($categories as $cat)
-            <a href="{{ route('news.index', ['category' => $cat->slug]) }}" 
+            <a href="{{ route('news.category', $cat->slug) }}" 
                class="btn btn-sm {{ $selectedCategory && $selectedCategory->id === $cat->id ? 'btn-success fw-semibold' : 'btn-outline-secondary' }}">
                 {{ $cat->name }} <span class="badge bg-light text-dark ms-1">{{ $cat->articles_count }}</span>
             </a>
@@ -52,8 +62,11 @@
         <div class="col-md-6 col-lg-4">
             <article class="news-card">
                 <a href="{{ route('news.show', $article->slug) }}">
-                    <img src="{{ asset($article->featured_image ?: 'assets/images/cricket/stadium_floodlights.svg') }}" 
+                    <img src="{{ asset($article->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg') }}" 
                          alt="{{ $article->title }}" 
+                         width="400"
+                         height="225"
+                         loading="lazy"
                          class="card-thumbnail">
                 </a>
                 <div class="p-3.5 p-4 d-flex flex-column flex-grow-1 justify-content-between">

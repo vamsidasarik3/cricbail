@@ -13,25 +13,20 @@ class NewsController extends Controller
     /**
      * Display the paginated news listing with optional category filtering.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $selectedCategorySlug = $request->query('category');
-        $selectedCategory = null;
+        if ($selectedCategorySlug) {
+            return redirect()->route('news.category', $selectedCategorySlug, 301);
+        }
 
         $query = Article::published()
             ->with(['category', 'author'])
             ->latest('published_at');
 
-        if ($selectedCategorySlug) {
-            $selectedCategory = Category::where('slug', $selectedCategorySlug)->first();
-            if ($selectedCategory) {
-                $query->where('category_id', $selectedCategory->id);
-            }
-        }
-
         $articles = $query->paginate(6)->withQueryString();
         $categories = Category::withCount(['articles' => fn ($q) => $q->published()])->get();
-
+        $selectedCategory = null;
         return view('news.index', compact('articles', 'categories', 'selectedCategory'));
     }
 

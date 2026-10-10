@@ -1,21 +1,37 @@
+@inject('seo', 'App\Services\SeoService')
 @extends('layouts.app')
 
-@section('title', 'CricBail - Premier Cricket News, In-Depth Analysis & Interactive Quizzes')
-@section('meta_description', 'Latest cricket news, IPL developments, international Test match analysis, domestic cricket talent, and interactive cricket trivia on CricBail.')
+@section('title', 'CricBail - Cricket News, Match Analysis & Quizzes')
+@section('meta_description', 'Latest cricket news, IPL updates, international Test match analysis, domestic cricket talent, and interactive cricket trivia on CricBail.')
+@section('canonical_url', $seo->canonicalUrl('/'))
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode($seo->websiteJsonLd(), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+</script>
+<script type="application/ld+json">
+{!! json_encode($seo->organizationJsonLd(), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="container">
+    <!-- Semantic Main Site H1 for Search Engines -->
+    <h1 class="visually-hidden">CricBail - Cricket News, Tactical Match Analysis & Interactive Quizzes</h1>
 
     <!-- 1. FEATURED HERO ARTICLE -->
     @if($featuredArticle)
-    <section class="featured-story-section mb-5">
+    <section class="featured-story-section mb-5" aria-labelledby="hero-story-title">
         <div class="card news-card border-0 shadow-sm overflow-hidden">
             <div class="row g-0">
                 <div class="col-lg-7">
                     <a href="{{ route('news.show', $featuredArticle->slug) }}">
-                        <img src="{{ asset($featuredArticle->featured_image ?: 'assets/images/cricket/stadium_floodlights.svg') }}" 
+                        <img src="{{ asset($featuredArticle->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg') }}" 
                              alt="{{ $featuredArticle->title }}" 
-                             class="card-thumbnail-featured w-100">
+                             class="card-thumbnail-featured w-100"
+                             fetchpriority="high"
+                             width="700" 
+                             height="420">
                     </a>
                 </div>
                 <div class="col-lg-5 d-flex flex-column justify-content-between p-4 p-lg-5 bg-white">
@@ -27,11 +43,11 @@
                             </a>
                         </div>
 
-                        <h1 class="h2 fw-bold mb-3">
+                        <h2 class="h2 fw-bold mb-3" id="hero-story-title">
                             <a href="{{ route('news.show', $featuredArticle->slug) }}" class="text-dark text-decoration-none hover-primary">
                                 {{ $featuredArticle->title }}
                             </a>
-                        </h1>
+                        </h2>
 
                         <p class="text-muted lead fs-6 mb-4">
                             {{ $featuredArticle->excerpt }}
@@ -72,9 +88,13 @@
             <div class="col-md-6 col-lg-3">
                 <article class="news-card">
                     <a href="{{ route('news.show', $article->slug) }}">
-                        <img src="{{ asset($article->featured_image ?: 'assets/images/cricket/stadium_floodlights.svg') }}" 
+                        <img src="{{ asset($article->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg') }}" 
                              alt="{{ $article->title }}" 
-                             class="card-thumbnail">
+                             class="card-thumbnail"
+                             loading="lazy"
+                             decoding="async"
+                             width="400"
+                             height="225">
                     </a>
                     <div class="p-3 d-flex flex-column flex-grow-1 justify-content-between">
                         <div>
@@ -129,9 +149,14 @@
                     @forelse($iplArticles as $ipl)
                     <div class="d-flex gap-3 mb-3 pb-3 {{ !$loop->last ? 'border-bottom' : '' }}">
                         <a href="{{ route('news.show', $ipl->slug) }}" class="flex-shrink-0">
-                            <img src="{{ asset($ipl->featured_image ?: 'assets/images/cricket/ipl_auction.svg') }}" 
+                            <img src="{{ asset($ipl->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg') }}" 
                                  alt="{{ $ipl->title }}" 
-                                 class="rounded" style="width: 100px; height: 75px; object-fit: cover;">
+                                 class="rounded" 
+                                 loading="lazy"
+                                 decoding="async"
+                                 style="width: 100px; height: 75px; object-fit: cover;"
+                                 width="100" 
+                                 height="75">
                         </a>
                         <div>
                             <h4 class="h6 fw-bold mb-1">
@@ -165,9 +190,14 @@
                     @forelse($analysisArticles as $analysis)
                     <div class="d-flex gap-3 mb-3 pb-3 {{ !$loop->last ? 'border-bottom' : '' }}">
                         <a href="{{ route('news.show', $analysis->slug) }}" class="flex-shrink-0">
-                            <img src="{{ asset($analysis->featured_image ?: 'assets/images/cricket/data_analysis.svg') }}" 
+                            <img src="{{ asset($analysis->featured_image ?: 'assets/images/cricket/cricbail_share_card.jpg') }}" 
                                  alt="{{ $analysis->title }}" 
-                                 class="rounded" style="width: 100px; height: 75px; object-fit: cover;">
+                                 class="rounded" 
+                                 loading="lazy"
+                                 decoding="async"
+                                 style="width: 100px; height: 75px; object-fit: cover;"
+                                 width="100" 
+                                 height="75">
                         </a>
                         <div>
                             <h4 class="h6 fw-bold mb-1">
